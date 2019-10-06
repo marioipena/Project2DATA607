@@ -1,0 +1,221 @@
+---
+title: "CUNY SPS - Master of Science in Data Science - DATA607"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Project 2: Tidy and Transform Data
+# Mario Pena
+# 10/06/2019
+
+In this project, we are asked to choose 3 wide datasets and transform the data in order to prepare it for analysis.
+
+I will load the libraries to be used in the next step:
+
+```{r}
+library('dplyr')
+library('tidyr')
+library('ggplot2')
+```
+
+## Datasets {.tabset}
+
+### Renewable Energy
+
+This is a dataset that contains the usage of renewable energy by sector and source. We will tidy the data in order to find some patterns.
+
+First we will load the data:
+
+```{r}
+renewable<-read.csv("https://raw.githubusercontent.com/marioipena/Project2DATA607/master/historicalrenewableenergyconsumptionbysectorandenergysource19892008.csv", header= FALSE, sep=",")
+```
+
+Now we can start transforming the data in order to prepare for analysis. I have first gotten rid of the first few rows that add no value to my analysis, as well as a few empty rows within the data:
+
+```{r}
+renewable2 <- renewable[-c(1:6),]
+renewable2 <- renewable2[-c(2,12,18,27,37,41,43,52),]
+```
+
+We will make the first row the header for the dataset:
+
+```{r}
+colnames(renewable2)[1:21] <- c("Sector and Source", 1989:2008)
+renewable2 <- renewable2[-c(1),]
+```
+
+The data will be transformed from wide to long and we will make our new "Usage" column a data type double:
+
+```{r}
+renewable_long <- gather(renewable2, "Year", "Usage", 2:21)
+renewable_long$Usage <- as.double(renewable_long$Usage)
+```
+
+We will now filter some of our data to see a graph that shows the usage of renewable energy over the years:
+
+```{r}
+Total <- filter(renewable_long, `Sector and Source` == "Total")
+ggplot(Total, aes(Year, Usage)) + geom_bar(stat="identity", width = 0.5, fill="tomato2") + labs(y="Quadrillion Btu", title="Renewable Energy Usage Over the Years")
+```
+
+As we can see above, the usage of renewable energy over the years has had its ups and downs, and we can't seem to find a steady increase or decrease of the usage. However, in 2008 we can see the greatest usage of renewable energy.
+
+Now let's take a look at the usage by sector and source. 
+
+We will once again filter the data:
+
+```{r}
+sector <- renewable_long %>% filter(`Sector and Source` %in% c("Residential", "Commercial", "Industrial", "Transportation", "Electric Utilities", "Independent Power Producers")) %>% rename(Sector = `Sector and Source`)
+ggplot(sector, aes(Year, Usage, fill = Sector)) + geom_bar(position="dodge", stat="identity") + labs(y="Quadrillion Btu", title="Renewable Energy Usage Over the Years by Sector") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(sector, aes(x = Year, y = Usage, group = Sector)) + geom_line(aes(color = Sector)) + labs(y="Quadrillion Btu", title="Renewable Energy Usage Over the Years by Sector") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+We can see from our plots above that the "Electric Utilities" sector is the one that has consumed the most over the years.
+
+Let's see what source this renewable energy might be coming from:
+
+```{r}
+source <- renewable2[c(2,6,7,8,9),]
+source_long <- gather(source, "Year", "Usage", 2:21)
+source_long$Usage <- as.double(source_long$Usage)
+source2 <- source_long %>% rename(Source = `Sector and Source`)
+ggplot(source2, aes(Year, Usage, fill = Source)) + geom_bar(position="dodge", stat="identity") + labs(y="Quadrillion Btu", title="Renewable Energy Usage Over the Years by Source") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(source2, aes(x = Year, y = Usage, group = Source)) + geom_line(aes(color = Source)) + labs(y="Quadrillion Btu", title="Renewable Energy Usage Over the Years by Source") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+We can see from our plots above that the "Hydroelectric Conventional" source has been the one being used the most for a lot of years, but by 2003 we start seeing a shift and "Biomass" seems to be leading the way in consumption of renewable energy. This trend makes sense as most sectors have more or less increased their consumption of "Biomass" over the years.
+
+### Farm Output by State
+
+This is a dataset that contains the total output of farms by state. We will tidy the data in order to find some patterns.
+
+First we will load the data:
+
+*Note that we eliminate the first five rows when loading in order to make the column names the 6th row in the dataset.*
+
+```{r}
+farm<-read.csv("https://raw.githubusercontent.com/marioipena/Project2DATA607/master/Total%20Farm%20Output%20by%20State.csv", skip = 5L)
+```
+
+We will eliminate all empty rows:
+
+```{r}
+farm2 <- na.omit(farm)
+```
+
+The data will be transformed from wide to long and we will make our new "State" and "Output" columns:
+
+```{r}
+farm_long <- farm2[-c(46:54),]
+farm_long <- gather(farm_long, "State", "Output", 2:49)
+```
+
+We will now summarize some of our data to see a graph that shows the total output by state from 1960 to 2004.
+
+```{r}
+totalState <- farm_long %>% group_by(State) %>% summarise(Total = sum(Output))
+ggplot(totalState, aes(State, Total)) + geom_bar(stat="identity", width = 0.5, fill="tomato2") + labs(y="Output", title="Total Farm Output by State 1960-2004") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+We can see above that CA had the largest farm output by far from 1960 to 2004. This makes sense as California leads the country as the largest producer of agricultural products (crops and livestock) and it's one of the top largest states in the country.
+
+Now let's see which year had the highest farm output:
+
+```{r}
+totalYear <- farm_long %>% group_by(Year) %>% summarise(Total = sum(Output))
+ggplot(totalYear, aes(Year, Total)) + geom_bar(stat="identity", width = 0.5, fill="tomato2") + labs(y="Output", title="Total Farm Output in the US by Year 1960-2004") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Farm output has actually been increasing at a steady rate according to ERS neweest data, and it can be observed in the bar plot above.
+
+We can also take a look at the average annual growth rate over the years:
+
+```{r}
+farm3 <- farm2[c(47:54),]
+farm3_long <- gather(farm3, "State", "AVG Annual Growth", 2:49)
+totalGrowth <- farm3_long %>% group_by(Year) %>% summarise(Total = sum(`AVG Annual Growth`))
+ggplot(totalGrowth, aes(Year, Total)) + geom_bar(stat="identity", width = 0.5, fill="tomato2") + labs(y="Rate", title="Total Average Growth Rate of Farm Output in the US by Year Group 1960-2004")
+```
+
+We can see that the highest growth rate in farm output happened between the years 1973 and 1979. This could be due to the farm boom of the 1970s, and we can see a similar boom happening during the 1990s.
+
+### Imports for Steel Products
+
+This is a dataset that contains the imports of steel for the consumption of steel products measured by quantity in metric tons and value in thousands of dollars. We will tidy the data in order to find some patterns.
+
+First we will load the data:
+
+```{r}
+steel<-read.csv("https://raw.githubusercontent.com/marioipena/Project2DATA607/master/Imports%20Steel%20Products1f.csv", skip = 7L)
+```
+
+Now we can start transforming the data in order to prepare for analysis. We will add appropriate column names to identify our data and get rid of a few rows that add no value to our analysis:
+
+```{r}
+colnames(steel)[1:13] <- c("Commodity Grouping", "Quantity January 2019", "Value January 2019", "Quantity December 2018", "Value December 2018", "Quantity January 2018", "Value January 2018", "Quantity December 2017", "Value December 2017", "Quantity Final 2019", "Value Final 2019", "Quantity Final 2018", "Value Final 2018")
+steel2 <- steel[-c(1:6, 8, 47:99),]
+```
+
+There were a few extra columns with NA values that were loaded with our data. I used the select function to grab only the columns with values:
+
+```{r}
+steel2 <- select(steel2, "Commodity Grouping", "Quantity January 2019", "Value January 2019", "Quantity December 2018", "Value December 2018", "Quantity January 2018", "Value January 2018", "Quantity December 2017", "Value December 2017", "Quantity Final 2019", "Value Final 2019", "Quantity Final 2018", "Value Final 2018")
+```
+
+Now that our data looks much cleaner, we can start analyzing it.
+
+We will first look at the totals of steel import for consumption of steel products by quantity and value for the years 2018 and 2019. We will apply functions from tidyr and dplyr to transform our data further for this analysis: 
+
+```{r}
+totalq <- steel2 %>% select("Commodity Grouping", "Quantity Final 2019", "Value Final 2019", "Quantity Final 2018", "Value Final 2018") %>% gather("Final", "Quantiy/Value", 2:5) %>% filter(`Commodity Grouping` == "Total Selected Commodities") %>% filter(Final %in% c("Quantity Final 2019", "Quantity Final 2018")) %>% rename(Quantity = `Quantiy/Value`)
+
+ggplot(totalq, aes(Final, Quantity)) + geom_bar(stat="identity", width = 0.5, fill="tomato2") + labs(y="Quantity (Metric Tons)", title="Total Import of Steel by Quantity for 2018 and 2019")
+```
+
+We can see above that the total quantity of steel import for consumption of steel products was almost one third more at the end of 2019 than it was in 2018. 
+
+We would expect for the total value to correlate with these quantities. Let's see what the total value of steel import for consumption of steel products looks like:
+
+```{r}
+totalv <- steel2 %>% select("Commodity Grouping", "Quantity Final 2019", "Value Final 2019", "Quantity Final 2018", "Value Final 2018") %>% gather("Final", "Quantiy/Value", 2:5) %>% filter(`Commodity Grouping` == "Total Selected Commodities" & Final %in% c("Value Final 2019", "Value Final 2018")) %>% rename(Value = `Quantiy/Value`)
+
+ggplot(totalv, aes(Final, Value)) + geom_bar(stat="identity", width = 0.5, fill="tomato2") + labs(y="Value (Thousands of Dollars)", title="Total Import of Steel by Value for 2018 and 2019")
+```
+
+Not surprisingly, the total value of steel import was higher at the end of 2019, but not by as big a margin as we would expect since the quantity gap between 2019 and 2018 was almost one third.
+
+Perhaps it was due to a steep decline in the price of steel by the end of 2018 beginning of 2019. Additionally, we have not reached the end of 2019 as of yet, so these graphs may change in the total quantity and value still.
+
+Let's explore out data further. 
+
+We'll look at each commodity by quantity at the end of 2018 and 2019:
+
+```{r}
+commodity <- steel2[-c(1),]
+commodity <- select(commodity, "Commodity Grouping", "Quantity Final 2019", "Value Final 2019", "Quantity Final 2018", "Value Final 2018")
+
+commodityq <- commodity %>% gather("Final", "Quantiy/Value", 2:5) %>% filter(Final %in% c("Quantity Final 2019", "Quantity Final 2018"))%>% rename(Quantity = `Quantiy/Value`)
+
+#Our quantities were being read as strings because they included a comma in them. I have changed them to numeric in this step:
+commodityq$Quantity <- as.numeric(sub(",", "", commodityq$Quantity, fixed = TRUE))
+
+ggplot(data=commodityq, aes(x=`Commodity Grouping`, y=Quantity, fill = factor(`Commodity Grouping`))) + geom_bar(stat = "identity") + theme(legend.position = "none", axis.text.y = element_text(size=4), axis.text.x = element_text(angle = 90, hjust = 1, size=5)) + labs(y="Quantity (Metric Tons)") + coord_flip() + facet_wrap(~Final, ncol=2)
+```
+
+We can see above that quantities for import of steel for consumption of steel products have increased among products between 2018 and 2019 with a few variations. We can see, however, among the largest quantity is Blooms, Billets and Slabs, which has almost doubled imports from 2018 to 2019.
+
+Now we'll look at each commodity by value at the end of 2018 and 2019:
+```{r}
+commodityv <- commodity %>% gather("Final", "Quantiy/Value", 2:5) %>% filter(Final %in% c("Value Final 2019", "Value Final 2018"))%>% rename(Value = `Quantiy/Value`)
+
+#Our values were being read as strings because they included a comma in them. I have changed them to numeric in this step:
+commodityv$Value <- as.numeric(sub(",", "", commodityv$Value, fixed = TRUE))
+
+ggplot(data=commodityv, aes(x=`Commodity Grouping`, y=Value, fill = factor(`Commodity Grouping`))) + geom_bar(stat = "identity") + theme(legend.position = "none", axis.text.y = element_text(size=4), axis.text.x = element_text(angle = 90, hjust = 1, size=5)) + labs(y="Value (Thousands of Dollars)") + coord_flip() + facet_wrap(~Final, ncol=2)
+```
+
+We can say that the value for the imports correlate with the quantities being imported as we've seen in the graphs above.
+
+One big difference that is noticeble is the value between two of the largest imports of steel for Oil Country Goods and Blooms, Billets and Slabs. Apparently Oil Country Goods are more expensive than Blooms, Billets and Slabs, which is why in 2018 we can see that even though quantity is higher for Blooms, Billets and Slabs, the value is higher for Oil Country Goods.
